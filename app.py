@@ -1,11 +1,12 @@
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from models import db, CustomUser
+from models import db, CustomUser, Photo, Comment
 from forms import UserRegistrationForm, UserLoginForm
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from flask_migrate import Migrate
-
+import os
 
 
 app = Flask(__name__)
@@ -16,6 +17,10 @@ migrate = Migrate(app, db)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+UPLOAD_FOLDER = 'static/uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 @login_manager.user_loader
@@ -81,6 +86,41 @@ def logout():
     logout_user()  # Ожидается, что этот вызов разорвет сессию
     return redirect(url_for('home'))  # Перенаправление на главную страницу
 
+
+@app.route('/photos', methods=['GET', 'POST'])
+@login_required
+def photos():
+    if request.method == 'POST':
+        file = request.files.get('photo')
+        description = request.form.get('description')
+        if file:
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            new_photo = Photo(
+                user_id=current_user.id,
+                image_path=f"{app.config['UPLOAD_FOLDER']}/{filename}",
+                description=description
+            )
+            db.session.add(new_photo)
+            db.session.commit()
+            flash('Фото успешно загружено', 'success')
+    photos = Photo.query.order_by(Photo.timestamp.desc()).all()
+    return render_template('photos.html', photos=photos)
+
+@app.route('/photos/<int:photo_id>/comments', methods=['POST'])
+@login_required
+def add_comment(photo_id):
+    content = request.form.get('comment')
+    if content:
+        new_comment = Comment(
+            user_id=current_user.id,
+            photo_id=photo_id,
+            content=content
+        )
+        db.session.add(new_comment)
+        db.session.commit()
+        flash('Комментарий добавлен', 'success')
+    return redirect(url_for('photos'))
 
 
 if __name__ == '__main__':

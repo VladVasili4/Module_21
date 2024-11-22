@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Фотографии</title>
+    <style>
+        .photo {
+            margin: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Фотографии</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="photo" required>
+        <textarea name="description" placeholder="Описание" rows="2"></textarea>
+        <button type="submit">Загрузить</button>
+    </form>
+    <hr>
+    {% for photo in photos %}
+    <div class="photo">
+        <img src="{{ photo.image_path }}" alt="Фото">
+        <p>{{ photo.description }}</p>
+        <p>Загружено: {{ photo.user.username }} | {{ photo.timestamp }}</p>
+        <h4>Комментарии:</h4>
+        <ul>
+            {% for comment in photo.comments %}
+            <li><strong>{{ comment.user.username }}:</strong> {{ comment.content }}</li>
+            {% endfor %}
+        </ul>
+        <form method="POST" action="{{ url_for('add_comment', photo_id=photo.id) }}">
+            <textarea name="comment" placeholder="Добавить комментарий" rows="2" required></textarea>
+            <button type="submit">Комментировать</button>
+        </form>
+    </div>
+    {% endfor %}
+</body>
+</html>
